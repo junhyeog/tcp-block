@@ -1,57 +1,48 @@
 #include "tcphdr.h"
 
-// ----------------------------------------------------------------------------
-// GTcpHdr
-// ----------------------------------------------------------------------------
-//
-// All tcpHdr field except tcpHdr.sum
-// All data buffer(padding)
-// ipHdr.ip_src, ipHdr.ip_dst, tcpHdrDataLen and IPPROTO_TCP
-//
-uint16_t TcpHdr::calcChecksum(IpHdr* ipHdr, TcpHdr* tcpHdr) {
+/**
+ * @desc calc tcp checksum
+ * @param ipHdr
+ * @param tcpHdr
+ * @return checksum in host byte order
+*/
+uint16_t TcpHdr::calc_checksum(IpHdr* ipHdr, TcpHdr* tcpHdr) {
   uint32_t res = 0;
-  int tcpHdrDataLen = ipHdr->len() - sizeof(IpHdr);
 
-  // Add tcpHdr & data buffer as array of uint16_t
-  uint16_t* p = reinterpret_cast<uint16_t*>(tcpHdr);
-  for (int i = 0; i < tcpHdrDataLen / 2; i++) {
-    res += htons(*p);
-    p++;
-  }
+  //? Init checksum
+  uint16_t org_checksum_ = tcpHdr->checksum_;
 
-  // If length is odd, add last data(padding)
-  if ((tcpHdrDataLen / 2) * 2 != tcpHdrDataLen)
-    res += uint32_t(*(reinterpret_cast<uint8_t*>(p)) << 8);
+  //? Clear checksum
+  tcpHdr->checksum_ = 0;
 
-  // Decrease checksum from sum
-  res -= tcpHdr->sum();
+  //? Sum each word(2byte)
+  //? Pseudo header = ip.sip(32bits) / ip.dip(32bits) / fixd(0)(8bits) / ip.protocol(8bits) / tcp segment length(16bits)
+  // ip.sip
+  uint32_t sip = ipHdr->sip();
+  res += ((sip & 0xFFFF0000) >> 16) + (sip & 0x0000FFFF);
 
-  // Add src address
-  uint32_t src = ipHdr->sip();
-  res += ((src & 0xFFFF0000) >> 16) + (src & 0x0000FFFF);
+  //ip.dip
+  uint32_t dip = ipHdr->dip();
+  res += ((dip & 0xFFFF0000) >> 16) + (dip & 0x0000FFFF);
 
-  // Add dst address
-  uint32_t dst = ipHdr->dip();
-  res += ((dst & 0xFFFF0000) >> 16) + (dst & 0x0000FFFF);
+  //ip.protocal
+  res += uint32_t(ipHdr->protocol());
+  // tcp segment length
+  uint32_t tcp_segment_len = uint32_t(ipHdr->len()) - (uint32_t(ipHdr->hdr_len()) << 2);  //ipHdr->len() - sizeof(IpHdr);
+  res += tcp_segment_len;
 
-  // Add extra information
-  res += uint32_t(tcpHdrDataLen) + IPPROTO_TCP;
+  //? TCP Segment
+  uint16_t* wp = reinterpret_cast<uint16_t*>(tcpHdr);
+  int i = int(tcp_segment_len);
+  for (; i > 1; i -= 2) res += uint32_t(ntohs(*wp++));
+  if (i) res += uint32_t(*reinterpret_cast<uint8_t*>(wp)) << 8;
 
-  // Recalculate sum
-  while (res >> 16) {
-    res = (res & 0xFFFF) + (res >> 16);
-  }
-  res = ~res;
+  //? Fold upper 16bits
+  while (res > 0xffff) res = (res >> 16) + (res & 0xffff);
 
-  return uint16_t(res);
-}
+  //? Restore init checksum
+  tcpHdr->checksum_ = org_checksum_;
 
-Buf TcpHdr::parseData(IpHdr* ipHdr, TcpHdr* tcpHdr) {
-  Buf res;
-  res.size_ = ipHdr->len() - ipHdr->hdr_len() * 4 - tcpHdr->off() * 4;
-  if (res.size_ > 0)
-    res.data_ = reinterpret_cast<u_char*>(tcpHdr) + tcpHdr->off() * 4;
-  else
-    res.data_ = nullptr;
-  return res;
+  //? one's complement
+  return ~uint16_t(res);
 }

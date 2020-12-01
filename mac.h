@@ -4,7 +4,7 @@
 #include <cstring>
 #include <string>
 
-struct Mac final {  // size = 6
+struct Mac final {            // size = 6
   static const int SIZE = 6;  // static variable이므로 메모리를 차지하지 않는다.
 
   //

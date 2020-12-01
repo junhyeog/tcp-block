@@ -20,9 +20,6 @@ struct Ip final {  // size = 4(uint32_t)
   operator uint32_t() const { return ip_; }  // default
   explicit operator std::string() const;
 
-  //
-  // comparison operator
-  //
   bool operator==(const Ip& r) const { return ip_ == r.ip_; }
 
  protected:

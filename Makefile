@@ -3,7 +3,7 @@ TARGET=tcp-block
 
 all: $(TARGET)
 
-arp-spoof: main.o $(TARGET) tcphdr.o ethhdr.o iphdr.o ip.o mac.o buf.o
+$(TARGET): main.o tcpBlock.o tcphdr.o ethhdr.o iphdr.o ip.o mac.o
 	$(LINK.cc) $^ $(LOADLIBES) $(LDLIBS) -o $@
 
 clean:
