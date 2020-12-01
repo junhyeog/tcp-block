@@ -17,4 +17,6 @@
     - https://www.geeksforgeeks.org/calculation-of-tcp-checksum/
 - port forwarding
     - https://hahaite.tistory.com/283
-    
+
+
+https://www.notion.so/antemrdm/TCP-Block-b2c1bdc26f0d40f586111dadaa61abc8
