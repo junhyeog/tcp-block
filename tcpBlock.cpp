@@ -5,7 +5,7 @@ int TcpBlock::send_forward_rst(TcpPacket* org_packet) {
   uint32_t ethHdr_hdr_len = sizeof(EthHdr);
   uint32_t org_ipHdr_hdr_len = (uint32_t)org_packet->ipHdr_.hdr_len() << 2;
   uint32_t org_tcpHdr_hdr_len = (uint32_t)org_packet->tcpHdr_.off() << 2;
-  TcpPacket* block_packet = (TcpPacket*)malloc(ethHdr_hdr_len + org_ipHdr_hdr_len + org_tcpHdr_hdr_len);
+  TcpPacket* block_packet = (TcpPacket*)malloc(ethHdr_hdr_len + org_ipHdr_hdr_len + org_tcpHdr_hdr_len);  // TODO Free!!!
   memcpy(block_packet, org_packet, ethHdr_hdr_len + org_ipHdr_hdr_len + org_tcpHdr_hdr_len);
 
   //? TCP
@@ -26,7 +26,9 @@ int TcpBlock::send_forward_rst(TcpPacket* org_packet) {
   block_packet->ipHdr_.checksum_ = htons(IpHdr::calc_checksum(&block_packet->ipHdr_));
   block_packet->tcpHdr_.checksum_ = htons(TcpHdr::calc_checksum(&block_packet->ipHdr_, &block_packet->tcpHdr_));
 
-  return pcap_sendpacket(handle_, (u_char*)block_packet, sizeof(EthHdr) + block_packet->ipHdr_.len());
+  int res = pcap_sendpacket(handle_, (u_char*)block_packet, sizeof(EthHdr) + block_packet->ipHdr_.len());
+  free(block_packet);
+  return res;
 }
 
 int TcpBlock::send_backward_fin(TcpPacket* org_packet, std::string data) {
@@ -35,7 +37,7 @@ int TcpBlock::send_backward_fin(TcpPacket* org_packet, std::string data) {
   uint32_t org_ipHdr_hdr_len = (uint32_t)org_packet->ipHdr_.hdr_len() << 2;
   uint32_t org_tcpHdr_hdr_len = (uint32_t)org_packet->tcpHdr_.off() << 2;
   uint32_t total_hdr_len = ethHdr_hdr_len + org_ipHdr_hdr_len + org_tcpHdr_hdr_len;
-  TcpPacket* block_packet = (TcpPacket*)malloc(total_hdr_len + data.size());
+  TcpPacket* block_packet = (TcpPacket*)malloc(total_hdr_len + data.size());  // TODO Free !!!
   memcpy(block_packet, org_packet, total_hdr_len);
   memcpy((uint8_t*)block_packet + total_hdr_len, data.c_str(), data.size());
 
@@ -61,5 +63,7 @@ int TcpBlock::send_backward_fin(TcpPacket* org_packet, std::string data) {
   block_packet->ipHdr_.checksum_ = htons(IpHdr::calc_checksum(&block_packet->ipHdr_));
   block_packet->tcpHdr_.checksum_ = htons(TcpHdr::calc_checksum(&block_packet->ipHdr_, &block_packet->tcpHdr_));
 
-  return pcap_sendpacket(handle_, (u_char*)block_packet, sizeof(EthHdr) + block_packet->ipHdr_.len());
+  int res = pcap_sendpacket(handle_, (u_char*)block_packet, sizeof(EthHdr) + block_packet->ipHdr_.len());
+  free(block_packet);
+  return res;
 }
